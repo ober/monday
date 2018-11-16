@@ -262,21 +262,23 @@ namespace: monday
 
 (def (mgroup board group title)
   (let* ((bid (get-boardid board))
-	 (gid (get-groupid bid group))
+	 (gid (get-groupid board group))
 	 (data (hash
 		("group_id" gid)
 		("title" title))))
   (show-tables (monday-put (format "boards/~a/groups.json" bid) data))))
 
-(def (npulse board user gid name)
-  (let* ((userid (get-userid user))
+(def (npulse board user group name)
+  (let* ((bid (get-boardid board))
+	 (userid (get-userid user))
+	 (gid (get-groupid board group))
 	 (data (hash
-		("user_id" user)
+		("user_id" userid)
 		("group_id" gid)
 		("pulse"
 		 (hash
 		  ("name" name))))))
-    (show-tables (monday-post (format "boards/~a/pulses.json" board) data))))
+    (show-tables (monday-post (format "boards/~a/pulses.json" bid) data))))
 
 (def (boards)
   (displayln "|Name|Id|Description|Url|Columns|Groups|Created|Updated|")
