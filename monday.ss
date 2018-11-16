@@ -209,18 +209,6 @@ namespace: monday
 	       "|" .created_at
 	       "|" .updated_at)))
 
-;; API::V1::Board {
-;; url (string): The resource's URL.,
-;; id (integer): The board's unique identifier.,
-;; name (string): The board's name.,
-;; description (string): The board's description.,
-;; columns (array): The board's visible columns.,
-;; board_kind (string, optional): The board's kind (public/private/shareable).,
-;; groups (array): The board's visible groups.,
-;; created_at (DateTime in ISO8601 format): Creation time.,
-;; updated_at (DateTime in ISO8601 format): Last update time.
-;; }
-
 (def (get-userid pattern)
   (let ((found #f)
 	(users (monday-get "users.json" [])))
@@ -240,7 +228,7 @@ namespace: monday
     (for-each
       (lambda (b)
 	(let-hash b
-l	  (when (pregexp-match pattern .name)
+	  (when (pregexp-match pattern .name)
 	    (set! found .id))))
       bs)
     (displayln found)))
