@@ -53,10 +53,12 @@ namespace: monday
    ("groups" (hash (description: "List all groups for a board") (usage: "groups <board id>") (count: 1)))
    ("mgroup" (hash (description: "Modify group title") (usage: "mgroup <board id> <gid> <title>") (count: 3)))
    ("ngroup" (hash (description: "Create a new group for board") (usage: "ngroup <board id> <title>") (count: 2)))
-   ("npulse" (hash (description: "Create new pulse for Board") (usage: "npulse <id of board> <userid> <name of pulse>") (count: 3)))
+   ("npulse" (hash (description: "Create new pulse for Board") (usage: "npulse <id of board> <userid> <group id> <name of pulse>") (count: 4)))
    ("pulses" (hash (description: "List all pulses") (usage: "pulses") (count: 0)))
    ("updates" (hash (description: "List all updates") (usage: "updates") (count: 0)))
    ("users" (hash (description: "List all users.") (usage: "users") (count: 0)))
+   ("get-userid" (hash (description: "Find userid for a pattern.") (usage: "get-userid <partial string>") (count: 1)))
+   ("get-boardid" (hash (description: "Find boardid for a pattern.") (usage: "get-boardid <partial string>") (count: 1)))
    ))
 
 (def (main . args)
@@ -178,7 +180,70 @@ namespace: monday
   (displayln (hash->list t)))
 
 (def (users)
-  (show-tables (monday-call "users.json" "get" [])))
+  (displayln "|Name|id|email|title|position|created_at|updated_at|")
+  (displayln "|-|")
+  (for-each
+    (lambda (user)
+      (print-user user))
+    (monday-call "users.json" "get" [])))
+
+(def (print-user user)
+  (let-hash user
+    (displayln "|" .name
+	       "|" .id
+	       "|" .email
+	       "|" .title
+	       "|" .position
+	       "|" .created_at
+	       "|" .updated_at)))
+
+
+(def (print-board b)
+  (let-hash b
+    (displayln "|" .name
+	       "|" .id
+	       "|" .description
+	       "|" .url
+	       "|" .columns
+	       "|" .groups
+	       "|" .created_at
+	       "|" .updated_at)))
+
+;; API::V1::Board {
+;; url (string): The resource's URL.,
+;; id (integer): The board's unique identifier.,
+;; name (string): The board's name.,
+;; description (string): The board's description.,
+;; columns (array): The board's visible columns.,
+;; board_kind (string, optional): The board's kind (public/private/shareable).,
+;; groups (array): The board's visible groups.,
+;; created_at (DateTime in ISO8601 format): Creation time.,
+;; updated_at (DateTime in ISO8601 format): Last update time.
+;; }
+
+(def (get-userid pattern)
+  (let ((found #f)
+	(users (monday-get "users.json" [])))
+    (for-each
+      (lambda (u)
+	(let-hash u
+	  (if (or
+		(pregexp-match pattern .name)
+		(pregexp-match pattern .email))
+	    (set! found .id))))
+      users)
+    found))
+
+(def (get-boardid pattern)
+  (let ((found #f)
+	(bs (monday-get "boards.json" [])))
+    (for-each
+      (lambda (b)
+	(let-hash b
+l	  (when (pregexp-match pattern .name)
+	    (set! found .id))))
+      bs)
+    (displayln found)))
 
 (def (pulses)
   (show-tables (monday-call "pulses.json" "get" [])))
@@ -199,16 +264,23 @@ namespace: monday
 	       ("title" title))))
   (show-tables (monday-put (format "boards/~a/groups.json" bid) data))))
 
-(def (npulse board user name)
-  (let ((data (hash
-	       ("user_id" user)
-	       ("pulse"
-		(hash
-		 ("name" name))))))
+(def (npulse board user gid name)
+  (let* ((userid (get-userid user))
+	 (data (hash
+		("user_id" user)
+		("group_id" gid)
+		("pulse"
+		 (hash
+		  ("name" name))))))
     (show-tables (monday-post (format "boards/~a/pulses.json" board) data))))
 
 (def (boards)
-  (show-tables (monday-call "boards.json" "get" [])))
+  (displayln "|Name|Id|Description|Url|Columns|Groups|Created|Updated|")
+  (displayln "|-|")
+  (for-each
+    (lambda (b)
+      (print-board b))
+    (monday-get "boards.json" [])))
 
 (def (board id)
   (show-table (monday-call (format "boards/~a.json" id) "get" [])))
