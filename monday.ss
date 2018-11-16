@@ -34,7 +34,7 @@ namespace: monday
 (def display-format "org-mode")
 (def monday-company-key #f)
 (def monday-personal-key #f)
-(def header #f)
+;;(def header #f)
 
 (import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
 (def program-name "monday")
@@ -45,11 +45,18 @@ namespace: monday
 
 (def interactives
   (hash
-   ("boards" (hash (description: "users.") (usage: "users") (count: 0)))
+   ("board" (hash (description: "Get information board") (usage: "board <id of board>") (count: 1)))
+   ("boards" (hash (description: "List All Boards") (usage: "boards") (count: 0)))
+   ("bp" (hash (description: "Get Pulses for Board") (usage: "bp <id of board>") (count: 1)))
+   ("columns" (hash (description: "List all columns for a board") (usage: "columns <board id>") (count: 1)))
    ("config" (hash (description: "Configure credentials for app.") (usage: "config") (count: 0)))
-   ("updates" (hash (description: "updates.") (usage: "updates") (count: 0)))
-   ("users" (hash (description: "users.") (usage: "users") (count: 0)))
-   ("pulses" (hash (description: "users.") (usage: "users") (count: 0)))
+   ("groups" (hash (description: "List all groups for a board") (usage: "groups <board id>") (count: 1)))
+   ("mgroup" (hash (description: "Modify group title") (usage: "mgroup <board id> <gid> <title>") (count: 3)))
+   ("ngroup" (hash (description: "Create a new group for board") (usage: "ngroup <board id> <title>") (count: 2)))
+   ("npulse" (hash (description: "Create new pulse for Board") (usage: "npulse <id of board> <userid> <name of pulse>") (count: 3)))
+   ("pulses" (hash (description: "List all pulses") (usage: "pulses") (count: 0)))
+   ("updates" (hash (description: "List all updates") (usage: "updates") (count: 0)))
+   ("users" (hash (description: "List all users.") (usage: "users") (count: 0)))
    ))
 
 (def (main . args)
@@ -82,11 +89,11 @@ namespace: monday
 		 .?api-iv
 		 .?api-password)
 	(let ((keys (get-keys-from-config .api-key
-					.api-iv
-					.api-password
-					.app-key
-					.app-iv
-					.app-password)))
+					  .api-iv
+					  .api-password
+					  .app-key
+					  .app-iv
+					  .app-password)))
 	  (hash-put! config 'monday-company-key (hash-ref keys "api"))
 	  (hash-put! config 'monday-personal-key (hash-ref keys "app")))))
     config))
@@ -108,36 +115,66 @@ namespace: monday
   (exit 2))
 
 (def (show-tables tables)
+  (define header #f)
   (for-each
     (lambda (t)
-      (format-me t))
+      (format-me t header))
     tables))
 
-(def (format-me t)
+(def (show-table t)
+  (define header #f)
+  (format-me t header))
+
+(def (format-me t header)
   (cond
    ((string=? display-format "org-mode")
-    (format-org t))
-
+    (format-org t header))
    ((string=? display-format "raw")
-    (format-raw t))
+    (format-raw t header))
    (else
-    (format-raw t))))
+    (format-raw t header))))
 
-(def (format-org t)
+(def (print-elt-table t header)
+  (stringify-hash t))
+
+(def (print-elt-list l header)
+  (for-each
+    (lambda (elt)
+      (format-me elt header))
+    l))
+
+(def (print-elt e header)
+  ;;  (displayln "here: " (type-of e))
+  (cond
+   ((table? e)
+    (print-elt-table e header))
+   ((list? e)
+    (print-elt-list e header))
+   ((string? e)
+    e)
+   ((symbol? e)
+    (symbol->string e))
+   ((flonum? e)
+    e)
+   ((boolean? e)
+    e)
+   ((fixnum? e)
+    e)
+   (else
+    (format "to:~a" (type-of e)))))
+
+(def (format-org t header)
   (unless header
-    (for-each
-      (lambda (h)
-	(display (format "|~a" h)))
-      (hash-keys t))
-    (displayln "|")
-    (set! header #t))
+    (set! header []))
   (hash-for-each
    (lambda (k v)
-     (display (format "|~a" v)))
+     (unless (member k header)
+       (set! header (flatten (cons header k))))
+     (display (format "|~a" (print-elt v header))))
    t)
   (displayln "|"))
 
-(def (format-raw t)
+(def (format-raw t header)
   (displayln (hash->list t)))
 
 (def (users)
@@ -146,8 +183,38 @@ namespace: monday
 (def (pulses)
   (show-tables (monday-call "pulses.json" "get" [])))
 
+(def (groups bid)
+  (show-tables (monday-get (format "boards/~a/groups.json" bid) [])))
+
+(def (columns bid)
+  (show-tables (monday-get (format "boards/~a/columns.json" bid) [])))
+
+(def (ngroup bid title)
+  (let ((data (hash ("title" title))))
+    (show-tables (monday-post (format "boards/~a/groups.json" bid) data))))
+
+(def (mgroup bid gid title)
+  (let ((data (hash
+	       ("group_id" gid)
+	       ("title" title))))
+  (show-tables (monday-put (format "boards/~a/groups.json" bid) data))))
+
+(def (npulse board user name)
+  (let ((data (hash
+	       ("user_id" user)
+	       ("pulse"
+		(hash
+		 ("name" name))))))
+    (show-tables (monday-post (format "boards/~a/pulses.json" board) data))))
+
 (def (boards)
   (show-tables (monday-call "boards.json" "get" [])))
+
+(def (board id)
+  (show-table (monday-call (format "boards/~a.json" id) "get" [])))
+
+(def (bp id)
+  (show-tables (monday-call (format "boards/~a/pulses.json" id) "get" [])))
 
 (def (updates)
   (show-tables (monday-call "updates.json" "get" [])))
@@ -157,6 +224,9 @@ namespace: monday
 
 (def (monday-put adds data)
   (monday-call adds "put" data))
+
+(def (monday-post adds data)
+  (monday-call adds "post" data))
 
 (def (monday-call adds type data)
   (let-hash (load-config)
@@ -169,9 +239,12 @@ namespace: monday
 			   (do-get-generic uri headers))
 			  ((string= type "put")
 			   (do-put uri headers (json-object->string data)))
+			  ((string= type "post")
+			   (do-post uri headers (json-object->string data)))
 			  (else
 			   (displayln "unsupported type: " type))))
 	   (myjson (from-json results)))
+      (dp (format "uri is ~a" uri))
       myjson)))
 
 (def (config)
@@ -201,9 +274,9 @@ namespace: monday
 	 (iv-store (u8vector->base64-string iv))
 	 (key-store (u8vector->base64-string key)))
     (hash
-	  ("key" key-store)
-	  ("iv" iv-store)
-	  ("password" enc-pass-store))))
+     ("key" key-store)
+     ("iv" iv-store)
+     ("password" enc-pass-store))))
 
 (def (decrypt-password key iv password)
   (bytes->string
@@ -250,6 +323,18 @@ namespace: monday
 (def (success? status)
   (and (>= status 200) (<= status 299)))
 
+(def (do-post uri headers data)
+  (let* ((reply (http-post uri
+			   headers: headers
+			   data: data))
+	 (status (request-status reply))
+	 (text (request-text reply)))
+    (dp (print-curl "post" uri headers data))
+    (if (success? status)
+      text
+      (displayln (format "Error: Failure on a post. got ~a text: ~a~%" status text)))))
+
+
 (def (do-put uri headers data)
   (dp (print-curl "put" uri headers data))
   (let* ((reply (http-put uri
@@ -267,3 +352,20 @@ namespace: monday
    (with-input-from-string json read-json)
    (catch (e)
      (displayln "error parsing json " e))))
+
+(def (stringify-hash h)
+  (let ((results []))
+    (if (table? h)
+      (begin
+	(hash-for-each
+	 (lambda (k v)
+	   (set! results (append results (list (format " ~a->" k) (format "~a   " v)))))
+	 h)
+	(append-strings results))
+      ;;        (pregexp-replace "\n" (append-strings results) "\t"))
+      "N/A")))
+
+(def (flatten x)
+  (cond ((null? x) '())
+	((pair? x) (append (flatten (car x)) (flatten (cdr x))))
+	(else (list x))))
