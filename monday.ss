@@ -58,6 +58,7 @@ namespace: monday
    ("updates" (hash (description: "List all updates") (usage: "updates") (count: 0)))
    ("users" (hash (description: "List all users.") (usage: "users") (count: 0)))
    ("get-userid" (hash (description: "Find userid for a pattern.") (usage: "get-userid <partial string>") (count: 1)))
+   ("get-groupid" (hash (description: "Find userid for a pattern.") (usage: "get-groupid <board partial> <group partial>") (count: 2)))
    ("get-boardid" (hash (description: "Find boardid for a pattern.") (usage: "get-boardid <partial string>") (count: 1)))
    ))
 
@@ -231,13 +232,26 @@ namespace: monday
 	  (when (pregexp-match pattern .name)
 	    (set! found .id))))
       bs)
-    (displayln found)))
+    found))
+
+(def (get-groupid bpat gpat)
+  (let* ((bid (get-boardid bpat))
+	(found #f)
+	(bs (monday-get (format "boards/~a/groups.json" bid) [])))
+    (for-each
+      (lambda (b)
+	(let-hash b
+	  (when (pregexp-match gpat .title)
+	    (set! found .id))))
+      bs)
+    found))
 
 (def (pulses)
   (show-tables (monday-call "pulses.json" "get" [])))
 
-(def (groups bid)
-  (show-tables (monday-get (format "boards/~a/groups.json" bid) [])))
+(def (groups board)
+  (let ((bid (get-boardid board)))
+    (show-tables (monday-get (format "boards/~a/groups.json" bid) []))))
 
 (def (columns bid)
   (show-tables (monday-get (format "boards/~a/columns.json" bid) [])))
@@ -246,10 +260,12 @@ namespace: monday
   (let ((data (hash ("title" title))))
     (show-tables (monday-post (format "boards/~a/groups.json" bid) data))))
 
-(def (mgroup bid gid title)
-  (let ((data (hash
-	       ("group_id" gid)
-	       ("title" title))))
+(def (mgroup board group title)
+  (let* ((bid (get-boardid board))
+	 (gid (get-groupid bid group))
+	 (data (hash
+		("group_id" gid)
+		("title" title))))
   (show-tables (monday-put (format "boards/~a/groups.json" bid) data))))
 
 (def (npulse board user gid name)
