@@ -48,16 +48,18 @@ namespace: monday
    ("bp" (hash (description: "Get Pulses for Board") (usage: "bp <id of board>") (count: 1)))
    ("columns" (hash (description: "List all columns for a board") (usage: "columns <board id>") (count: 1)))
    ("config" (hash (description: "Configure credentials for app.") (usage: "config") (count: 0)))
+   ("get-boardid" (hash (description: "Find boardid for a pattern.") (usage: "get-boardid <partial string>") (count: 1)))
+   ("get-groupid" (hash (description: "Find userid for a pattern.") (usage: "get-groupid <board partial> <group partial>") (count: 2)))
+   ("get-userid" (hash (description: "Find userid for a pattern.") (usage: "get-userid <partial string>") (count: 1)))
    ("groups" (hash (description: "List all groups for a board") (usage: "groups <board id>") (count: 1)))
    ("mgroup" (hash (description: "Modify group title") (usage: "mgroup <board id> <gid> <title>") (count: 3)))
    ("ngroup" (hash (description: "Create a new group for board") (usage: "ngroup <board id> <title>") (count: 2)))
+   ("notes" (hash (description: "List all notes for a pulse") (usage: "notes <pulse id>") (count: 1)))
    ("npulse" (hash (description: "Create new pulse for Board") (usage: "npulse <id of board> <userid> <group id> <name of pulse>") (count: 4)))
    ("pulses" (hash (description: "List all pulses") (usage: "pulses") (count: 0)))
+   ("pulse" (hash (description: "List info on pulse") (usage: "pulse <pulse id>") (count: 1)))
    ("updates" (hash (description: "List all updates") (usage: "updates") (count: 0)))
    ("users" (hash (description: "List all users.") (usage: "users") (count: 0)))
-   ("get-userid" (hash (description: "Find userid for a pattern.") (usage: "get-userid <partial string>") (count: 1)))
-   ("get-groupid" (hash (description: "Find userid for a pattern.") (usage: "get-groupid <board partial> <group partial>") (count: 2)))
-   ("get-boardid" (hash (description: "Find boardid for a pattern.") (usage: "get-boardid <partial string>") (count: 1)))
    ))
 
 (def (main . args)
@@ -245,7 +247,41 @@ namespace: monday
     found))
 
 (def (pulses)
-  (show-tables (monday-call "pulses.json" "get" [])))
+  (displayln "| Name | Id | Subscribers | Created | Updated |")
+  (displayln "|-|")
+  (for-each
+    (lambda (p)
+      (print-pulse p))
+    (monday-get "pulses.json" [])))
+
+(def (pulse id)
+  (displayln "| Name | Id | Subscribers | Created | Updated |")
+  (displayln "|-|")
+  (print-pulse (monday-get (format "pulses/~a.json" id) [])))
+
+(def (print-pulse pulse)
+  (when (table? pulse)
+    (let-hash pulse
+      (displayln "|" .name
+		 "|" .id
+		 "|" .subscribers
+		 "|" .created_at
+		 "|" .updated_at
+		 "|"))))
+
+  ;; url (string): The resource's URL.,
+;; id (integer): The pulse's unique identifier.,
+;; name (string): The pulse's name.,
+;; subscribers (array of subscribers.): The board's subscribers.,
+;; created_at (DateTime in ISO8601 format): Creation time.,
+;; updated_at (DateTime in ISO8601 format): Last update time.
+}
+
+
+
+
+(def (notes pid)
+  (show-tables (monday-get (format "pulses/~a/notes.json" pid) [])))
 
 (def (groups board)
   (let ((bid (get-boardid board)))
