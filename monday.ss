@@ -10,8 +10,6 @@ namespace: monday
   :std/crypto/cipher
   :std/crypto/etc
   :std/crypto/libcrypto
-  :std/db/dbi
-  :std/db/sqlite
   :std/format
   :std/generic
   :std/generic/dispatch
@@ -288,11 +286,13 @@ namespace: monday
       (print-board b))
     (monday-get "boards.json" [])))
 
-(def (board id)
-  (show-table (monday-call (format "boards/~a.json" id) "get" [])))
+(def (board board)
+  (let ((bid (get-boardid board)))
+    (show-table (monday-get (format "boards/~a.json" bid) []))))
 
-(def (bp id)
-  (show-tables (monday-call (format "boards/~a/pulses.json" id) "get" [])))
+(def (bp board)
+  (let ((bid (get-boardid board)))
+    (show-tables (monday-get (format "boards/~a/pulses.json" bid) []))))
 
 (def (updates)
   (show-tables (monday-call "updates.json" "get" [])))
