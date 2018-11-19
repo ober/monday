@@ -51,6 +51,7 @@ namespace: monday
    ("get-boardid" (hash (description: "Find boardid for a pattern.") (usage: "get-boardid <partial string>") (count: 1)))
    ("get-groupid" (hash (description: "Find userid for a pattern.") (usage: "get-groupid <board partial> <group partial>") (count: 2)))
    ("get-userid" (hash (description: "Find userid for a pattern.") (usage: "get-userid <partial string>") (count: 1)))
+   ("get-pulseid" (hash (description: "Find pulseid for a pattern.") (usage: "get-pulseid <partial string>") (count: 1)))
    ("groups" (hash (description: "List all groups for a board") (usage: "groups <board id>") (count: 1)))
    ("mgroup" (hash (description: "Modify group title") (usage: "mgroup <board id> <gid> <title>") (count: 3)))
    ("ngroup" (hash (description: "Create a new group for board") (usage: "ngroup <board id> <title>") (count: 2)))
@@ -205,10 +206,17 @@ namespace: monday
 	       "|" .id
 	       "|" .description
 	       "|" .url
-	       "|" .columns
+	       "|" (print-columns .columns)
 	       "|" .groups
 	       "|" .created_at
 	       "|" .updated_at)))
+
+(def (print-columns columns)
+  (when (list? columns)
+    (for-each
+      (lambda (c)
+	(displayln (stringify-hash c)))
+      columns)))
 
 (def (get-userid pattern)
   (let ((found #f)
@@ -234,10 +242,21 @@ namespace: monday
       bs)
     found))
 
+(def (get-pulseid pat)
+  (let ((found #f)
+	(bs (monday-get "pulses.json" [])))
+    (for-each
+      (lambda (b)
+	(let-hash b
+	  (when (pregexp-match pat .name)
+	    (set! found .id))))
+      bs)
+    found))
+
 (def (get-groupid bpat gpat)
   (let* ((bid (get-boardid bpat))
-	(found #f)
-	(bs (monday-get (format "boards/~a/groups.json" bid) [])))
+	 (found #f)
+	 (bs (monday-get (format "boards/~a/groups.json" bid) [])))
     (for-each
       (lambda (b)
 	(let-hash b
@@ -264,24 +283,46 @@ namespace: monday
     (let-hash pulse
       (displayln "|" .name
 		 "|" .id
-		 "|" .subscribers
+		 "|" (when .?subscribers (stringify-hash (car .subscribers)))
 		 "|" .created_at
 		 "|" .updated_at
 		 "|"))))
 
-  ;; url (string): The resource's URL.,
-;; id (integer): The pulse's unique identifier.,
-;; name (string): The pulse's name.,
-;; subscribers (array of subscribers.): The board's subscribers.,
+(def (notes pat)
+  (let ((pid (get-pulseid pat)))
+    (displayln "| Type | Id | Title | Project id| Permissions | Created | Updated |")
+    (displayln "|-|")
+    (for-each
+      (lambda (n)
+	(print-note n))
+      (monday-get (format "pulses/~a/notes.json" pid) []))))
+
+;; (def (note pid nid)
+;;   (displayln "| Type | Id | Title | Project id| Permissions | Created | Updated |")
+;;   (displayln "|-|")
+;;     (monday-get (format "pulses/~a/notes/~a.json" pid nid) [])))
+
+
+(def (print-note note)
+  (when (table? note)
+    (let-hash note
+      (displayln "|" .type
+		 "|" .id
+		 "|" .title
+		 "|" .project_id
+		 "|" .permissions
+		 "|" .created_at
+		 "|" .updated_at "|"))))
+
+;; type (string, optional): The collaboration box type (rich_text, file_list, faq_list).,
+;; id (string): The note's id.,
+;; title (string): The note's title.,
+;; project_id (string): The note's project_id.,
+;; permissions (string, optional): Describes who can edit this note. Can be either 'everyone' or 'owners'.,
 ;; created_at (DateTime in ISO8601 format): Creation time.,
 ;; updated_at (DateTime in ISO8601 format): Last update time.
-}
 
 
-
-
-(def (notes pid)
-  (show-tables (monday-get (format "pulses/~a/notes.json" pid) [])))
 
 (def (groups board)
   (let ((bid (get-boardid board)))
@@ -300,7 +341,7 @@ namespace: monday
 	 (data (hash
 		("group_id" gid)
 		("title" title))))
-  (show-tables (monday-put (format "boards/~a/groups.json" bid) data))))
+    (show-tables (monday-put (format "boards/~a/groups.json" bid) data))))
 
 (def (npulse board user group name)
   (let* ((bid (get-boardid board))
@@ -323,8 +364,10 @@ namespace: monday
     (monday-get "boards.json" [])))
 
 (def (board board)
+  (displayln "|Name|Id|Description|Url|Columns|Groups|Created|Updated|")
+  (displayln "|-|")
   (let ((bid (get-boardid board)))
-    (show-table (monday-get (format "boards/~a.json" bid) []))))
+    (print-board (monday-get (format "boards/~a.json" bid) []))))
 
 (def (bp board)
   (let ((bid (get-boardid board)))
