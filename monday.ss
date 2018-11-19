@@ -207,16 +207,31 @@ namespace: monday
 	       "|" .description
 	       "|" .url
 	       "|" (print-columns .columns)
-	       "|" .groups
+	       "|" (print-groups .groups)
 	       "|" .created_at
 	       "|" .updated_at)))
 
 (def (print-columns columns)
-  (when (list? columns)
-    (for-each
-      (lambda (c)
-	(displayln (stringify-hash c)))
-      columns)))
+  (let ((out []))
+    (when (list? columns)
+      (for-each
+	(lambda (c)
+	  (when (table? c)
+	    (displayln (hash-keys c))
+	    (let-hash c
+	      (when .?labels
+		(set! out (flatten (cons out (stringify-hash .labels))))))))
+	columns))
+    out))
+
+(def (print-groups groups)
+  (let ((out []))
+    (when (list? groups)
+      (for-each
+	(lambda (g)
+	  (set! out (flatten (cons out (stringify-hash g)))))
+	groups))
+    out))
 
 (def (get-userid pattern)
   (let ((found #f)
@@ -516,7 +531,7 @@ namespace: monday
       (begin
 	(hash-for-each
 	 (lambda (k v)
-	   (set! results (append results (list (format " ~a->" k) (format "~a   " v)))))
+	   (set! results (flatten (cons results (format "~a->~a, " k v)))))
 	 h)
 	(append-strings results))
       ;;        (pregexp-replace "\n" (append-strings results) "\t"))
