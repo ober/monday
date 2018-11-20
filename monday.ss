@@ -61,6 +61,8 @@ namespace: monday
    ("pulse" (hash (description: "List info on pulse") (usage: "pulse <pulse id>") (count: 1)))
    ("updates" (hash (description: "List all updates") (usage: "updates") (count: 0)))
    ("users" (hash (description: "List all users.") (usage: "users") (count: 0)))
+   ("user" (hash (description: "Get information on user.") (usage: "user <user pattern>") (count: 1)))
+   ("uposts" (hash (description: "Get posts for user.") (usage: "uposts <user pattern>") (count: 1)))
    ))
 
 (def (main . args)
@@ -181,6 +183,17 @@ namespace: monday
 (def (format-raw t header)
   (displayln (hash->list t)))
 
+(def (user upat)
+  (let ((uid (get-userid upat)))
+    (print-user
+     (monday-get (format "users/~a.json" uid) []))))
+
+(def (uposts upat)
+   (let ((uid (get-userid upat)))
+     (displayln
+      (monday-get (format "users/~a/posts.json" uid) []))))
+
+
 (def (users)
   (displayln "|Name|id|email|title|position|created_at|updated_at|")
   (displayln "|-|")
@@ -217,7 +230,6 @@ namespace: monday
       (for-each
 	(lambda (c)
 	  (when (table? c)
-	    (displayln (hash-keys c))
 	    (let-hash c
 	      (when .?labels
 		(set! out (flatten (cons out (stringify-hash .labels))))))))
@@ -298,7 +310,7 @@ namespace: monday
     (let-hash pulse
       (displayln "|" .name
 		 "|" .id
-		 "|" (when .?subscribers (stringify-hash (car .subscribers)))
+		 "|" (when (and .?subscribers (table? .subscribers)) (hash-ref .subscribers 'name))
 		 "|" .created_at
 		 "|" .updated_at
 		 "|"))))
@@ -311,6 +323,12 @@ namespace: monday
       (lambda (n)
 	(print-note n))
       (monday-get (format "pulses/~a/notes.json" pid) []))))
+
+(def (add-note bpat ppat)
+  (let ((bid (get-boardid bpat))
+	(ppat (get-pulseid ppat)))
+    (displayln "not yet")))
+
 
 ;; (def (note pid nid)
 ;;   (displayln "| Type | Id | Title | Project id| Permissions | Created | Updated |")
