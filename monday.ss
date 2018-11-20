@@ -60,11 +60,11 @@ namespace: monday
    ("pulse" (hash (description: "List info on pulse") (usage: "pulse <pulse id>") (count: 1)))
    ("pulses" (hash (description: "List all pulses") (usage: "pulses") (count: 0)))
    ("ufeed" (hash (description: "Get feed for user.") (usage: "feed <user pattern>") (count: 1)))
-   ("uunread" (hash (description: "Get unread news items for user.") (usage: "uuread <user pattern>") (count: 1)))
    ("updates" (hash (description: "List all updates") (usage: "updates") (count: 0)))
    ("uposts" (hash (description: "Get posts for user.") (usage: "uposts <user pattern>") (count: 1)))
    ("user" (hash (description: "Get information on user.") (usage: "user <user pattern>") (count: 1)))
    ("users" (hash (description: "List all users.") (usage: "users") (count: 0)))
+   ("uunread" (hash (description: "Get unread news items for user.") (usage: "uuread <user pattern>") (count: 1)))
    ))
 
 (def (main . args)
@@ -187,24 +187,24 @@ namespace: monday
 
 (def (user upat)
   (let* ((uid (get-userid upat))
-	(user (monday-get (format "users/~a.json" uid) [])))
+	 (user (monday-get (format "users/~a.json" uid) [])))
     (when (table? user)
       (print-user user))))
 
 (def (uposts upat)
-   (let ((uid (get-userid upat)))
-     (print-updates
-      (monday-get (format "users/~a/posts.json" uid) []))))
+  (let ((uid (get-userid upat)))
+    (print-updates
+     (monday-get (format "users/~a/posts.json" uid) []))))
 
 (def (ufeed upat)
-   (let ((uid (get-userid upat)))
-     (print-updates
-      (monday-get (format "users/~a/newsfeed.json" uid) []))))
+  (let ((uid (get-userid upat)))
+    (print-updates
+     (monday-get (format "users/~a/newsfeed.json" uid) []))))
 
 (def (uunread upat)
-   (let ((uid (get-userid upat)))
-     (print-updates
-      (monday-get (format "users/~a/unread_feed.json" uid) []))))
+  (let ((uid (get-userid upat)))
+    (print-updates
+     (monday-get (format "users/~a/unread_feed.json" uid) []))))
 
 (def (users)
   (displayln "|Name|id|email|title|position|created_at|updated_at|")
@@ -317,14 +317,25 @@ namespace: monday
   (displayln "|-|")
   (print-pulse (monday-get (format "pulses/~a.json" id) [])))
 
+(def (print-pulses pls)
+  (displayln "| Name | Id | Subscribers | Created | Updated |")
+  (displayln "|-|")
+  (displayln pls)
+  (when (list? pls)
+    (for-each
+      (lambda (u)
+	(print-pulse u))
+      pls)))
+
 (def (print-pulse pulse)
   (when (table? pulse)
     (let-hash pulse
-      (displayln "|" .name
-		 "|" .id
+      (displayln (hash->list pulse))
+      (displayln "|" .?name
+		 "|" .?id
 		 "|" (when (and .?subscribers (table? .subscribers)) (hash-ref .subscribers 'name))
-		 "|" .created_at
-		 "|" .updated_at
+		 "|" .?created_at
+		 "|" .?updated_at
 		 "|"))))
 
 (def (print-updates updates)
@@ -435,9 +446,36 @@ namespace: monday
   (let ((bid (get-boardid board)))
     (print-board (monday-get (format "boards/~a.json" bid) []))))
 
+(def (print-boarditem bi)
+  (when (table? bi)
+    (displayln (hash-keys bi))
+    (let-hash bi
+      (when .?pulse (print-bi-pulse .pulse))
+      (when .?board_meta (displayln "meta: " (hash-keys .board_meta)))
+      (when .?column_values (display-column-values .column_values)))))
+
+(def (print-bi-pulse bip)
+  (when (table? bip)
+    (let-hash bip
+      (display (format "id:~a name:~a url:~a created:~a updated:~a" .?id .?name .?url .?created_at .?updated_at)))))
+
+(def (display-column-values cv)
+  (when (list? cv)
+    (for-each
+      (lambda (c)
+	(displayln (hash->list c))
+	(let-hash c
+	  (display (hash->list c))))
+      ;;(display (format "~a " .name))))
+      cv)))
+
 (def (bp board)
-  (let ((bid (get-boardid board)))
-    (show-tables (monday-get (format "boards/~a/pulses.json" bid) []))))
+  (let* ((bid (get-boardid board))
+	 (bis (monday-get (format "boards/~a/pulses.json" bid) [])))
+    (for-each
+      (lambda (bi)
+	(print-boarditem bi))
+      bis)))
 
 (def (updates)
   (show-tables (monday-call "updates.json" "get" [])))
