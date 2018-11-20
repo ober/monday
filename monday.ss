@@ -190,9 +190,8 @@ namespace: monday
 
 (def (uposts upat)
    (let ((uid (get-userid upat)))
-     (displayln
+     (print-updates
       (monday-get (format "users/~a/posts.json" uid) []))))
-
 
 (def (users)
   (displayln "|Name|id|email|title|position|created_at|updated_at|")
@@ -315,6 +314,28 @@ namespace: monday
 		 "|" .updated_at
 		 "|"))))
 
+(def (print-updates updates)
+  (displayln "| User | Url | Id | Body | kind | has_assets | assets | created_at | updated_at |")
+  (displayln "|-|")
+  (when (list? updates)
+    (for-each
+      (lambda (u)
+	(print-update u))
+      updates)))
+
+(def (print-update update)
+  (when (table? update)
+    (let-hash update
+      (displayln "|" (when (and .?user (table? .user)) (let-hash .user (format "~a: ~a" .name .email)))
+		 "|" .url
+		 "|" .id
+		 "|" .body
+		 "|" .kind
+		 "|" .has_assets
+		 "|" .assets
+		 "|" .created_at
+		 "|" .updated_at "|"))))
+
 (def (notes pat)
   (let ((pid (get-pulseid pat)))
     (displayln "| Type | Id | Title | Project id| Permissions | Created | Updated |")
@@ -328,7 +349,6 @@ namespace: monday
   (let ((bid (get-boardid bpat))
 	(ppat (get-pulseid ppat)))
     (displayln "not yet")))
-
 
 ;; (def (note pid nid)
 ;;   (displayln "| Type | Id | Title | Project id| Permissions | Created | Updated |")
@@ -523,7 +543,6 @@ namespace: monday
     (if (success? status)
       text
       (displayln (format "Error: Failure on a post. got ~a text: ~a~%" status text)))))
-
 
 (def (do-put uri headers data)
   (dp (print-curl "put" uri headers data))
