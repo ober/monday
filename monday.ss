@@ -264,8 +264,8 @@ namespace: monday
       (lambda (u)
 	(let-hash u
 	  (if (or
-		(pregexp-match pattern .name)
-		(pregexp-match pattern .email))
+		(pregexp-match (format "(?i:~a)" pattern) .name)
+		(pregexp-match  (format "(?i:~a)" pattern) .email))
 	    (set! found .id))))
       users)
     found))
