@@ -1,0 +1,1 @@
+{"apiVersion":"v1","swaggerVersion":"1.2","resourcePath":"","apis":[{"path":"/v1/ping.{format}","operations":[{"produces":["application/json"],"notes":"","summary":"Returns ping.","nickname":"GET--version-ping---format-","httpMethod":"GET","parameters":[]}]}],"basePath":"https://api.monday.com"}

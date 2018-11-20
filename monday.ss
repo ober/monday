@@ -330,7 +330,6 @@ namespace: monday
 (def (print-pulse pulse)
   (when (table? pulse)
     (let-hash pulse
-      (displayln (hash->list pulse))
       (displayln "|" .?name
 		 "|" .?id
 		 "|" (when (and .?subscribers (table? .subscribers)) (hash-ref .subscribers 'name))
@@ -457,16 +456,14 @@ namespace: monday
 (def (print-bi-pulse bip)
   (when (table? bip)
     (let-hash bip
-      (display (format "id:~a name:~a url:~a created:~a updated:~a" .?id .?name .?url .?created_at .?updated_at)))))
+      (display (format "|~a|~a|~a|~a|~a|" .?id .?name .?url .?created_at .?updated_at)))))
 
 (def (display-column-values cv)
   (when (list? cv)
     (for-each
       (lambda (c)
-	(displayln (hash->list c))
 	(let-hash c
-	  (display (hash->list c))))
-      ;;(display (format "~a " .name))))
+	  (display (format "|~a|~a|~a|~a|" .?title .?name .?cid .?value))))
       cv)))
 
 (def (bp board)
