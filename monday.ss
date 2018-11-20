@@ -50,19 +50,21 @@ namespace: monday
    ("config" (hash (description: "Configure credentials for app.") (usage: "config") (count: 0)))
    ("get-boardid" (hash (description: "Find boardid for a pattern.") (usage: "get-boardid <partial string>") (count: 1)))
    ("get-groupid" (hash (description: "Find userid for a pattern.") (usage: "get-groupid <board partial> <group partial>") (count: 2)))
-   ("get-userid" (hash (description: "Find userid for a pattern.") (usage: "get-userid <partial string>") (count: 1)))
    ("get-pulseid" (hash (description: "Find pulseid for a pattern.") (usage: "get-pulseid <partial string>") (count: 1)))
+   ("get-userid" (hash (description: "Find userid for a pattern.") (usage: "get-userid <partial string>") (count: 1)))
    ("groups" (hash (description: "List all groups for a board") (usage: "groups <board id>") (count: 1)))
    ("mgroup" (hash (description: "Modify group title") (usage: "mgroup <board id> <gid> <title>") (count: 3)))
    ("ngroup" (hash (description: "Create a new group for board") (usage: "ngroup <board id> <title>") (count: 2)))
    ("notes" (hash (description: "List all notes for a pulse") (usage: "notes <pulse id>") (count: 1)))
    ("npulse" (hash (description: "Create new pulse for Board") (usage: "npulse <id of board> <userid> <group id> <name of pulse>") (count: 4)))
-   ("pulses" (hash (description: "List all pulses") (usage: "pulses") (count: 0)))
    ("pulse" (hash (description: "List info on pulse") (usage: "pulse <pulse id>") (count: 1)))
+   ("pulses" (hash (description: "List all pulses") (usage: "pulses") (count: 0)))
+   ("ufeed" (hash (description: "Get feed for user.") (usage: "feed <user pattern>") (count: 1)))
+   ("uunread" (hash (description: "Get unread news items for user.") (usage: "uuread <user pattern>") (count: 1)))
    ("updates" (hash (description: "List all updates") (usage: "updates") (count: 0)))
-   ("users" (hash (description: "List all users.") (usage: "users") (count: 0)))
-   ("user" (hash (description: "Get information on user.") (usage: "user <user pattern>") (count: 1)))
    ("uposts" (hash (description: "Get posts for user.") (usage: "uposts <user pattern>") (count: 1)))
+   ("user" (hash (description: "Get information on user.") (usage: "user <user pattern>") (count: 1)))
+   ("users" (hash (description: "List all users.") (usage: "users") (count: 0)))
    ))
 
 (def (main . args)
@@ -192,6 +194,16 @@ namespace: monday
    (let ((uid (get-userid upat)))
      (print-updates
       (monday-get (format "users/~a/posts.json" uid) []))))
+
+(def (ufeed upat)
+   (let ((uid (get-userid upat)))
+     (print-updates
+      (monday-get (format "users/~a/newsfeed.json" uid) []))))
+
+(def (uunread upat)
+   (let ((uid (get-userid upat)))
+     (print-updates
+      (monday-get (format "users/~a/unread_feed.json" uid) []))))
 
 (def (users)
   (displayln "|Name|id|email|title|position|created_at|updated_at|")
