@@ -186,9 +186,10 @@ namespace: monday
   (displayln (hash->list t)))
 
 (def (user upat)
-  (let ((uid (get-userid upat)))
-    (print-user
-     (monday-get (format "users/~a.json" uid) []))))
+  (let ((uid (get-userid upat))
+	(user (monday-get (format "users/~a.json" uid) [])))
+    (when (table? user)
+      (print-user user))))
 
 (def (uposts upat)
    (let ((uid (get-userid upat)))
