@@ -447,11 +447,11 @@ namespace: monday
 
 (def (print-boarditem bi)
   (when (table? bi)
-    (displayln (hash-keys bi))
     (let-hash bi
       (when .?pulse (print-bi-pulse .pulse))
-      (when .?board_meta (displayln "meta: " (hash-keys .board_meta)))
-      (when .?column_values (display-column-values .column_values)))))
+      ;;(when .?board_meta (displayln "meta: " (hash-keys .board_meta)))
+      (display-column-values .?column_values)
+      (displayln "|"))))
 
 (def (print-bi-pulse bip)
   (when (table? bip)
@@ -463,10 +463,12 @@ namespace: monday
     (for-each
       (lambda (c)
 	(let-hash c
-	  (display (format "|~a|~a|~a|~a|" .?title .?name .?cid .?value))))
+	  (display (format "~a: ~a," (or .?title .?name) (if (table? .?value) (stringify-hash .?value) .?value)))))
       cv)))
 
 (def (bp board)
+  (displayln "| Pulse id | Name | Url | Created | Updated | Columns |")
+  (displayln "|-|")
   (let* ((bid (get-boardid board))
 	 (bis (monday-get (format "boards/~a/pulses.json" bid) [])))
     (for-each
@@ -475,7 +477,8 @@ namespace: monday
       bis)))
 
 (def (updates)
-  (show-tables (monday-call "updates.json" "get" [])))
+  (print-updates
+   (monday-call "updates.json" "get" [])))
 
 (def (monday-get adds data)
   (monday-call adds "get" data))
