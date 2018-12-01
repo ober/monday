@@ -48,11 +48,12 @@ namespace: monday
    ("bp" (hash (description: "Get Pulses for Board") (usage: "bp <id of board>") (count: 1)))
    ("columns" (hash (description: "List all columns for a board") (usage: "columns <board id>") (count: 1)))
    ("config" (hash (description: "Configure credentials for app.") (usage: "config") (count: 0)))
-   ("get-boardid" (hash (description: "Find boardid for a pattern.") (usage: "get-boardid <partial string>") (count: 1)))
-   ("get-groupid" (hash (description: "Find userid for a pattern.") (usage: "get-groupid <board partial> <group partial>") (count: 2)))
-   ("get-pulseid" (hash (description: "Find pulseid for a pattern.") (usage: "get-pulseid <partial string>") (count: 1)))
+   ("get-board-id" (hash (description: "Find boardid for a pattern.") (usage: "get-boardid <partial string>") (count: 1)))
+   ("get-group-id" (hash (description: "Find userid for a pattern.") (usage: "get-group-id <board partial> <group partial>") (count: 2)))
+   ("get-pulse-id" (hash (description: "Find pulse-id for a pattern.") (usage: "get-pulse-id <partial string>") (count: 1)))
    ("get-userid" (hash (description: "Find userid for a pattern.") (usage: "get-userid <partial string>") (count: 1)))
    ("groups" (hash (description: "List all groups for a board") (usage: "groups <board id>") (count: 1)))
+   ("group" (hash (description: "Get tasks for group id") (usage: "group <board id/pat> <group id/pat>") (count: 2)))
    ("mgroup" (hash (description: "Modify group title") (usage: "mgroup <board id> <gid> <title>") (count: 3)))
    ("ngroup" (hash (description: "Create a new group for board") (usage: "ngroup <board id> <title>") (count: 2)))
    ("notes" (hash (description: "List all notes for a pulse") (usage: "notes <pulse id>") (count: 1)))
@@ -270,18 +271,21 @@ namespace: monday
       users)
     found))
 
-(def (get-boardid pattern)
-  (let ((found #f)
-	(bs (monday-get "boards.json" [])))
-    (for-each
-      (lambda (b)
-	(let-hash b
-	  (when (pregexp-match pattern .name)
-	    (set! found .id))))
-      bs)
-    found))
+(def (get-board-id pattern)
+  (if (or (number? pattern) (string->number pattern))
+    pattern
+    (begin
+      (let ((found #f)
+	    (bs (monday-get "boards.json" [])))
+	(for-each
+	  (lambda (b)
+	    (let-hash b
+	      (when (pregexp-match pattern .name)
+		(set! found .id))))
+	  bs)
+	found))))
 
-(def (get-pulseid pat)
+(def (get-pulse-id pat)
   (let ((found #f)
 	(bs (monday-get "pulses.json" [])))
     (for-each
@@ -292,8 +296,8 @@ namespace: monday
       bs)
     found))
 
-(def (get-groupid bpat gpat)
-  (let* ((bid (get-boardid bpat))
+(def (get-group-id bpat gpat)
+  (let* ((bid (get-board-id bpat))
 	 (found #f)
 	 (bs (monday-get (format "boards/~a/groups.json" bid) [])))
     (for-each
@@ -360,7 +364,7 @@ namespace: monday
 		 "|" .updated_at "|"))))
 
 (def (notes pat)
-  (let ((pid (get-pulseid pat)))
+  (let ((pid (get-pulse-id pat)))
     (displayln "| Type | Id | Title | Project id| Permissions | Created | Updated |")
     (displayln "|-|")
     (for-each
@@ -369,8 +373,8 @@ namespace: monday
       (monday-get (format "pulses/~a/notes.json" pid) []))))
 
 (def (add-note bpat ppat)
-  (let ((bid (get-boardid bpat))
-	(ppat (get-pulseid ppat)))
+  (let ((bid (get-board-id bpat))
+	(ppat (get-pulse-id ppat)))
     (displayln "not yet")))
 
 ;; (def (note pid nid)
@@ -398,11 +402,31 @@ namespace: monday
 ;; created_at (DateTime in ISO8601 format): Creation time.,
 ;; updated_at (DateTime in ISO8601 format): Last update time.
 
+(def (group board grp)
+  (let* ((bid (get-board-id board))
+	 (gid (get-group-id bid grp))
+	 (info (monday-get (format "boards/~a/groups/~a.json" bid gid) [])))
+    (displayln info)))
 
 
 (def (groups board)
-  (let ((bid (get-boardid board)))
-    (show-tables (monday-get (format "boards/~a/groups.json" bid) []))))
+  (let* ((bid (get-board-id board))
+	 (groups (monday-get (format "boards/~a/groups.json" bid) [])))
+    (displayln "| Title | Id | Pos | color|")
+    (displayln "|-|")
+    (for-each
+      (lambda (g)
+	(print-group g))
+      groups)))
+
+(def (print-group group)
+  (when (table? group)
+    (let-hash group
+      (unless .?deleted
+	(displayln "|" .?title
+		   "|" .?id
+		   "|" .?pos
+		   "|" .?color "|")))))
 
 (def (columns bid)
   (show-tables (monday-get (format "boards/~a/columns.json" bid) [])))
@@ -412,17 +436,17 @@ namespace: monday
     (show-tables (monday-post (format "boards/~a/groups.json" bid) data))))
 
 (def (mgroup board group title)
-  (let* ((bid (get-boardid board))
-	 (gid (get-groupid board group))
+  (let* ((bid (get-board-id board))
+	 (gid (get-group-id board group))
 	 (data (hash
 		("group_id" gid)
 		("title" title))))
     (show-tables (monday-put (format "boards/~a/groups.json" bid) data))))
 
 (def (npulse board user group name)
-  (let* ((bid (get-boardid board))
+  (let* ((bid (get-board-id board))
 	 (userid (get-userid user))
-	 (gid (get-groupid board group))
+	 (gid (get-group-id board group))
 	 (data (hash
 		("user_id" userid)
 		("group_id" gid)
@@ -442,7 +466,7 @@ namespace: monday
 (def (board board)
   (displayln "|Name|Id|Description|Url|Columns|Groups|Created|Updated|")
   (displayln "|-|")
-  (let ((bid (get-boardid board)))
+  (let ((bid (get-board-id board)))
     (print-board (monday-get (format "boards/~a.json" bid) []))))
 
 (def (print-boarditem bi)
@@ -469,7 +493,7 @@ namespace: monday
 (def (bp board)
   (displayln "| Pulse id | Name | Url | Created | Updated | Columns |")
   (displayln "|-|")
-  (let* ((bid (get-boardid board))
+  (let* ((bid (get-board-id board))
 	 (bis (monday-get (format "boards/~a/pulses.json" bid) [])))
     (for-each
       (lambda (bi)
