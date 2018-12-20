@@ -49,8 +49,8 @@ namespace: monday
    ("columns" (hash (description: "List all columns for a board") (usage: "columns <board id>") (count: 1)))
    ("config" (hash (description: "Configure credentials for app.") (usage: "config") (count: 0)))
    ("get-board-id" (hash (description: "Find boardid for a pattern.") (usage: "get-boardid <partial string>") (count: 1)))
-   ("get-column-id" (hash (description: "Find boardid for a pattern.") (usage: "get-boardid <partial string>") (count: 2)))
    ("get-group-id" (hash (description: "Find userid for a pattern.") (usage: "get-group-id <board partial> <group partial>") (count: 2)))
+   ("update-timeline" (hash (description: "Update timeline for pulse.") (usage: "update-timeline <board name/num> <pulse name/num> <from date> <to date>") (count: 4)))
    ("get-pulse-id" (hash (description: "Find pulse-id for a pattern.") (usage: "get-pulse-id <partial string>") (count: 1)))
    ("get-userid" (hash (description: "Find userid for a pattern.") (usage: "get-userid <partial string>") (count: 1)))
    ("groups" (hash (description: "List all groups for a board") (usage: "groups <board id>") (count: 1)))
@@ -299,21 +299,15 @@ namespace: monday
 	bs)
       found)))
 
-(def (get-column-id bpat cpat)
-  (let ((bid (get-board-id bpat)))
-    (if (or (number? cpat) (string->number cpat))
-      cpat
-      (let ((found #f)
-	    (columns (monday-get (format "boards/~a/columns.json" bid) [])))
-	(for-each
-	  (lambda (b)
-	    (displayln (hash->list b)))
-	  columns)))))
-;; 	  (let-hash b
-;; 	    (when (pregexp-match pat .name)
-;; 	      (set! found .id))))
-;; 	bs)
-;; found)))
+;; (def (get-column-id bpat cpat)
+;;   (let ((bid (get-board-id bpat)))
+;;     (if (or (number? cpat) (string->number cpat))
+;;       cpat
+;;       (let ((found #f)
+;; 	    (columns (monday-get (format "boards/~a/columns.json" bid) [])))
+;; 	(when (table? columns)
+;; 	  (let-hash columns
+;; 	    (when (pregexp-match cpat .title)
 
 (def (get-group-id bpat gpat)
   (let* ((bid (get-board-id bpat))
@@ -447,18 +441,19 @@ namespace: monday
 		   "|" .?pos
 		   "|" .?color "|")))))
 
-(def (columns bid)
-  (show-tables (monday-get (format "boards/~a/columns.json" bid) [])))
+(def (columns bpat)
+  (let ((bid (get-board-id bpat)))
+    (show-tables (monday-get (format "boards/~a/columns.json" bid) []))))
 
-;; (def (update-timeline bid cid pid from to)
-;;   (let* ((bid (get-board-id board))
-;; 	 (cid (get-group-id board group))
-;; 	 (pid (get-pulse-id pid))
-;; 	 (data (hash
-;; 		("group_id" gid)
-;; 		("title" title))))
-;;     (show-tables (monday-put (format "boards/~a/columns/~a/timeline.json" bid cid) data))))
-
+(def (update-timeline bid pid from to)
+  (let* ((bid (get-board-id bid))
+	 (cid "timeline")
+	 (pid (get-pulse-id pid))
+	 (data (hash
+		("from" from)
+		("to" to)
+		(pulse_id pid))))
+    (displayln (monday-put (format "boards/~a/columns/~a/timeline.json" bid cid) data))))
 
 (def (ngroup bid title)
   (let ((data (hash ("title" title))))
@@ -505,7 +500,14 @@ namespace: monday
 	(let ((cv (display-column-values ..column_values)))
 	  (displayln "|" .?id
 		     "|" .?name
-		     "|" (get-column-by-name ..column_values "timeline")
+		     "|" (let ((timeline (get-column-by-name ..column_values "timeline")))
+			   (when (table? timeline)
+			     (let-hash timeline
+			       (format "from: ~a to: ~a" .from .to))))
+		     "|" (let ((status (get-column-by-name ..column_values "status")))
+			   (when (table? status)
+			     (let-hash status
+			       .index)))
 		     "|" .?created_at
 		     "|" .?updated_at
 		     "|" (hash-ref ..board_meta 'group_id)
@@ -516,15 +518,14 @@ namespace: monday
 ;;    (let-hash bip
 
 (def (get-column-by-name cv name)
-  (let ((results ""))
+  (let ((results []))
     (when (list? cv)
       (for-each
 	(lambda (c)
 	  (let-hash c
 	    (when (pregexp-match name .cid)
 	      (when (table? .?value)
-		(let-hash .?value
-		  (set! results (format "from: ~a to: ~a" .from .to)))))))
+		(set! results .?value)))))
 	cv))
     results))
 
@@ -538,9 +539,8 @@ namespace: monday
 	cv)
       (string-join out " "))))
 
-
 (def (bp board)
-  (displayln "| Pulse id | Name | Timeline| Url | Created | Updated | Columns |")
+  (displayln "| Pulse id | Name | Timeline| Status | Created | Updated | Columns |")
   (displayln "|-|")
   (let* ((bid (get-board-id board))
 	 (bis (monday-get (format "boards/~a/pulses.json" bid) [])))
