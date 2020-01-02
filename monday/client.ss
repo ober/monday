@@ -46,6 +46,29 @@
 (import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
 (import (rename-in :gerbil/gambit/os (time mytime)))
 
+(def (load-config)
+  (let ((config (hash)))
+    (hash-for-each
+     (lambda (k v)
+       (hash-put! config (string->symbol k) v))
+     (car (yaml-load config-file)))
+    (let-hash config
+      (when (and .?app-key
+		 .?app-iv
+		 .?app-password
+		 .?api-key
+		 .?api-iv
+		 .?api-password)
+	(let ((keys (get-keys-from-config .api-key
+					  .api-iv
+					  .api-password
+					  .app-key
+					  .app-iv
+					  .app-password)))
+	  (hash-put! config 'monday-company-key (hash-ref keys "api"))
+	  (hash-put! config 'monday-personal-key (hash-ref keys "app")))))
+    config))
+
 (def (show-tables tables)
   (define header #f)
   (for-each
