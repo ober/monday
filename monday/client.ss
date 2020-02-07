@@ -90,7 +90,7 @@
     (format-raw t header))))
 
 (def (print-elt-table t header)
-  (stringify-hash t))
+  (hash->str t))
 
 (def (print-elt-list l header)
   (for-each
@@ -191,7 +191,7 @@
 	  (when (table? c)
 	    (let-hash c
 	      (when .?labels
-		(set! out (flatten (cons out (stringify-hash .labels))))))))
+		(set! out (flatten (cons out (hash->str .labels))))))))
 	columns))
     out))
 
@@ -200,7 +200,7 @@
     (when (list? groups)
       (for-each
 	(lambda (g)
-	  (set! out (flatten (cons out (stringify-hash g)))))
+	  (set! out (flatten (cons out (hash-.str g)))))
 	groups))
     out))
 
@@ -480,7 +480,7 @@
       (for-each
 	(lambda (c)
 	  (let-hash c
-	    (set! out (flatten (cons out (format "~a: ~a," (or .?title .?name) (if (table? .?value) (stringify-hash .?value) .?value)))))))
+	    (set! out (flatten (cons out (format "~a: ~a," (or .?title .?name) (if (table? .?value) (hash->str .?value) .?value)))))))
 	cv)
       (string-join out " "))))
 
