@@ -1,4 +1,6 @@
 ;; -*- Gerbil -*-
+;; Gerbil Library for Monday.com
+;; ©ober 2020
 
 (import
   :gerbil/gambit
@@ -45,6 +47,10 @@
 
 (import (rename-in :gerbil/gambit/os (current-time builtin-current-time)))
 (import (rename-in :gerbil/gambit/os (time mytime)))
+
+(def (default-headers)
+  [["Accept" :: "*/*"]
+   ["Content-type" :: "application/json"]])
 
 (def (load-config)
   (let ((config (hash)))
@@ -154,22 +160,18 @@
      (monday-get (format "users/~a/unread_feed.json" uid) []))))
 
 (def (users)
-  (displayln "|Name|id|email|title|position|created_at|updated_at|")
-  (displayln "|-|")
-  (for-each
-    (lambda (user)
-      (print-user user))
-    (monday-call "users.json" "get" [])))
-
-(def (print-user user)
-  (let-hash user
-    (displayln "|" .name
-	       "|" .id
-	       "|" .email
-	       "|" .title
-	       "|" .position
-	       "|" .created_at
-	       "|" .updated_at)))
+  (let-hash (load-config)
+    (let ((url (make-monday-url "users.json" .?monday-personal-key))
+          (outs [[ "Name" "Id" "Email" "Title" "Position" "Created" "Updated" ]]))
+      (with ([status body] (rest-call 'get url (default-headers)))
+        (unless status
+          (error body))
+        (when (list? body)
+          (for (user body)
+            (when (table? user)
+              (let-hash user
+                (set! outs (cons [ .?name .?id .?email .?title .?position .?created_at .?updated_at ] outs)))))))
+      (style-output outs))))
 
 
 (def (print-board b)
@@ -200,7 +202,7 @@
     (when (list? groups)
       (for-each
 	(lambda (g)
-	  (set! out (flatten (cons out (hash-.str g)))))
+	  (set! out (flatten (cons out (hash->str g)))))
 	groups))
     out))
 
@@ -495,6 +497,7 @@
       bis)))
 
 (def (updates)
+
   (print-updates
    (monday-call "updates.json" "get" [])))
 
@@ -507,6 +510,9 @@
 (def (monday-post adds data)
   (monday-call adds "post" data))
 
+(def (make-monday-url adds .monday-personal-key)
+  (format "https://api.monday.com/v1/~a?api_key=~a" adds .monday-personal-key))
+
 (def (monday-call adds type data)
   (let-hash (load-config)
     (let* ((uri (format "https://api.monday.com/v1/~a?api_key=~a" adds .monday-personal-key))
@@ -514,14 +520,15 @@
 		     ["Accept" :: "*/*"]
 		     ["Content-type" :: "application/json"]
 		     ])
-	   (results (cond ((string= type "get")
-			   (do-get-generic uri headers))
-			  ((string= type "put")
-			   (do-put uri headers (json-object->string data)))
-			  ((string= type "post")
-			   (do-post uri headers (json-object->string data)))
-			  (else
-			   (displayln "unsupported type: " type))))
+	   (results (cond
+                     ((string= type "get")
+                      (do-get-generic uri headers))
+                     ((string= type "put")
+                      (do-put uri headers (json-object->string data)))
+                     ((string= type "post")
+                      (do-post uri headers (json-object->string data)))
+                     (else
+                      (displayln "unsupported type: " type))))
 	   (myjson (from-json results)))
       (dp (format "uri is ~a" uri))
       myjson)))

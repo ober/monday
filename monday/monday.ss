@@ -1,4 +1,5 @@
 ;; -*- Gerbil -*-
+;; ©ober 2020
 
 (import
   :gerbil/gambit
