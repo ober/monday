@@ -142,7 +142,7 @@
   (let* ((uid (get-userid upat))
 	 (user (monday-get (format "users/~a.json" uid) [])))
     (when (table? user)
-      (print-user user))))
+      (pi user))))
 
 (def (uposts upat)
   (let ((uid (get-userid upat)))
